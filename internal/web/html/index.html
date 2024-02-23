@@ -1,0 +1,105 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="css/pico.min.css" />
+    <link rel="stylesheet" href="css/dropzone.min.css" type="text/css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Outline PDF Converter</title>
+    <meta name="description" content="Building and signing JWTs" />
+  </head>
+</html>
+<body>
+  <!-- Header -->
+  <header class="container">
+    <hgroup>
+      <h1>Outline PDF Converter</h1>
+      <p>Drop the Outline Markdown export to convert to a PDF</p>
+    </hgroup>
+  </header>
+  <main class="container" id="app">
+    <section id="Claims">
+      <h2>Drop file here</h2>
+      <form action="/file-upload" class="dropzone" id="outlineZipUpload"></form>
+    </section>
+  </main>
+  <script src="js/dropzone.min.js"></script>
+  <script src="js/minimal-theme-switcher.js"></script>
+  <script src="js/modal.js"></script>
+
+  <script type="module">
+    import {
+      createApp,
+      ref,
+      watch,
+      onMounted,
+    } from "./js/vue.esm-browser.prod.js";
+
+    export function debounce(fn, wait) {
+      let timer;
+      return function (...args) {
+        if (timer) {
+          clearTimeout(timer);
+        }
+        const context = this;
+        timer = setTimeout(() => {
+          fn.apply(context, args);
+        }, wait);
+      };
+    }
+
+    createApp({
+      setup() {
+        onMounted(() => {
+          Dropzone.options.outlineZipUpload = {
+            success: function (file, response) {
+              const processId = response;
+              console.log("File uploaded with process id", processId);
+              const interval = setInterval(() => {
+                fetch(`/status?id=${processId}`)
+                  .then((response) => {
+                    if (response.status === 200) {
+                      console.log(`${processId}: File ready`);
+                      clearInterval(interval);
+                      window.location.href = `/download?id=${processId}`;
+                    }
+                  })
+                  .catch((error) => {
+                    if (error.status === 404) {
+                      console.log(`${processId}: File not ready`);
+                    }
+                    clearInterval(interval);
+                    console.error("Error fetching status", error);
+                  });
+              }, 200);
+            },
+          };
+        });
+        return {};
+      },
+    }).mount("#app");
+  </script>
+  <style>
+    .autogrow {
+      display: grid;
+    }
+
+    .autogrow::after {
+      content: attr(data-replicated-value) " ";
+      white-space: pre-wrap;
+      visibility: hidden;
+      padding: 30px;
+    }
+
+    .autogrow > textarea {
+      resize: none;
+      font-family: monospace;
+    }
+
+    .autogrow > textarea,
+    .autogrow::after {
+      /* Add textarea styles here so that the textarea and div look the same */
+      grid-area: 1 / 1 / 2 / 2;
+    }
+  </style>
+</body>
